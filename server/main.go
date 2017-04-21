@@ -17,8 +17,8 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/urfave/cli"
-	kcp "github.com/xtaci/kcp-go"
-	"github.com/xtaci/smux"
+	kcp "gitlab.algotech.ch/jwt/kcp-go"
+	"gitlab.algotech.ch/jwt/SZ_smux"
 )
 
 var (
