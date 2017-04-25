@@ -8,7 +8,13 @@ import (
 // Config for server
 type Config struct {
 	Listen       string `json:"listen"`
+	ListenP1     string `json:"listenP1"`
+	ListenP2     string `json:"listenP2"`
+	ListenP3     string `json:"listenP3"`
 	Target       string `json:"target"`
+	TargetP1     string `json:"targetP1"`
+	TargetP2     string `json:"targetP2"`
+	TargetP3     string `json:"targetP3"`
 	Key          string `json:"key"`
 	Crypt        string `json:"crypt"`
 	Mode         string `json:"mode"`
