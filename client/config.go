@@ -8,7 +8,11 @@ import (
 // Config for client
 type Config struct {
 	LocalAddr    string `json:"localaddr"`
+	LocalAddr2   string `json:"localaddr2"`
+	LocalAddr3   string `json:"localaddr3"`
 	RemoteAddr   string `json:"remoteaddr"`
+	RemoteAddr2  string `json:"remoteaddr2"`
+	RemoteAddr3  string `json:"remoteaddr3"`
 	Key          string `json:"key"`
 	Crypt        string `json:"crypt"`
 	Mode         string `json:"mode"`

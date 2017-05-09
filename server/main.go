@@ -57,7 +57,7 @@ func newCompStream(conn net.Conn) *compStream {
 }
 
 // handle multiplex-ed connection
-func handleMux(conn io.ReadWriteCloser, config *Config, portTarget string) {
+func handleMux(conn io.ReadWriteCloser, config *Config) {
 	// stream multiplex
 	smuxConfig := smux.DefaultConfig()
 	smuxConfig.MaxReceiveBuffer = config.SockBuf
@@ -70,13 +70,12 @@ func handleMux(conn io.ReadWriteCloser, config *Config, portTarget string) {
 	}
 	defer mux.Close()
 	for {
-		log.Println("Inside the handleMux call: ", portTarget)
 		p1, err := mux.AcceptStream()
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		p2, err := net.DialTimeout("tcp", portTarget, 5*time.Second)
+		p2, err := net.DialTimeout("tcp", config.Target, 5*time.Second)
 		if err != nil {
 			p1.Close()
 			log.Println(err)
@@ -130,39 +129,9 @@ func main() {
 			Usage: "kcp server listen address",
 		},
 		cli.StringFlag{
-			Name:  "listenP1,l1",
-			Value: ":29901",
-			Usage: "kcp server listen P1 address",
-		},
-		cli.StringFlag{
-			Name:  "listenP2,l2",
-			Value: ":29902",
-			Usage: "kcp server listen P2 address",
-		},
-		cli.StringFlag{
-			Name:  "listenP3,l3",
-			Value: ":29903",
-			Usage: "kcp server listen P3 address",
-		},
-		cli.StringFlag{
 			Name:  "target, t",
 			Value: "127.0.0.1:12948",
 			Usage: "target server address",
-		},
-		cli.StringFlag{
-			Name:  "targetP1, t1",
-			Value: "127.0.0.1:12949",
-			Usage: "target server P1 address",
-		},
-		cli.StringFlag{
-			Name:  "targetP2, t2",
-			Value: "127.0.0.1:12950",
-			Usage: "target server P2 address",
-		},
-		cli.StringFlag{
-			Name:  "targetP3, t3",
-			Value: "127.0.0.1:12951",
-			Usage: "target server P3 address",
 		},
 		cli.StringFlag{
 			Name:   "key",
@@ -277,23 +246,9 @@ func main() {
 	myApp.Action = func(c *cli.Context) error {
 		config := Config{}
 		config.Listen = c.String("listen")
-		config.ListenP1 = c.String("listenP1")
-		config.ListenP2 = c.String("listenP2")
-		config.ListenP3 = c.String("listenP3")
-		log.Println("Listening to ports:")
-		log.Println(config.Listen)
-		log.Println(config.ListenP1)
-		log.Println(config.ListenP2)
-		log.Println(config.ListenP3)
 		config.Target = c.String("target")
-		config.TargetP1 = c.String("targetP1")
-		config.TargetP2 = c.String("targetP2")
-		config.TargetP3 = c.String("targetP3")
 		log.Println("Target Ports: ")
 		log.Println(config.Target)
-		log.Println(config.TargetP1)
-		log.Println(config.TargetP2)
-		log.Println(config.TargetP3)
 		config.Key = c.String("key")
 		config.Crypt = c.String("crypt")
 		config.Mode = c.String("mode")
@@ -374,63 +329,9 @@ func main() {
 
 		lis, err := kcp.ListenWithOptions(config.Listen, block, config.DataShard, config.ParityShard)
 		checkError(err)
-		lisP1, err := kcp.ListenWithOptions(config.ListenP1, block, config.DataShard, config.ParityShard)
-		checkError(err)
-		lisP2, err := kcp.ListenWithOptions(config.ListenP2, block, config.DataShard, config.ParityShard)
-		checkError(err)
-		lisP3, err := kcp.ListenWithOptions(config.ListenP3, block, config.DataShard, config.ParityShard)
-		checkError(err)
 
 		log.Println("listening on:", lis.Addr())
 		log.Println("target:", config.Target)
-		log.Println("encryption:", config.Crypt)
-		log.Println("nodelay parameters:", config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-		log.Println("sndwnd:", config.SndWnd, "rcvwnd:", config.RcvWnd)
-		log.Println("compression:", !config.NoComp)
-		log.Println("mtu:", config.MTU)
-		log.Println("datashard:", config.DataShard, "parityshard:", config.ParityShard)
-		log.Println("acknodelay:", config.AckNodelay)
-		log.Println("dscp:", config.DSCP)
-		log.Println("sockbuf:", config.SockBuf)
-		log.Println("keepalive:", config.KeepAlive)
-		log.Println("snmplog:", config.SnmpLog)
-		log.Println("snmpperiod:", config.SnmpPeriod)
-		log.Println("pprof:", config.Pprof)
-
-		log.Println("listening on:", lisP1.Addr())
-		log.Println("target P1:", config.TargetP1)
-		log.Println("encryption:", config.Crypt)
-		log.Println("nodelay parameters:", config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-		log.Println("sndwnd:", config.SndWnd, "rcvwnd:", config.RcvWnd)
-		log.Println("compression:", !config.NoComp)
-		log.Println("mtu:", config.MTU)
-		log.Println("datashard:", config.DataShard, "parityshard:", config.ParityShard)
-		log.Println("acknodelay:", config.AckNodelay)
-		log.Println("dscp:", config.DSCP)
-		log.Println("sockbuf:", config.SockBuf)
-		log.Println("keepalive:", config.KeepAlive)
-		log.Println("snmplog:", config.SnmpLog)
-		log.Println("snmpperiod:", config.SnmpPeriod)
-		log.Println("pprof:", config.Pprof)
-
-		log.Println("listening on:", lisP2.Addr())
-		log.Println("target P2:", config.TargetP2)
-		log.Println("encryption:", config.Crypt)
-		log.Println("nodelay parameters:", config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-		log.Println("sndwnd:", config.SndWnd, "rcvwnd:", config.RcvWnd)
-		log.Println("compression:", !config.NoComp)
-		log.Println("mtu:", config.MTU)
-		log.Println("datashard:", config.DataShard, "parityshard:", config.ParityShard)
-		log.Println("acknodelay:", config.AckNodelay)
-		log.Println("dscp:", config.DSCP)
-		log.Println("sockbuf:", config.SockBuf)
-		log.Println("keepalive:", config.KeepAlive)
-		log.Println("snmplog:", config.SnmpLog)
-		log.Println("snmpperiod:", config.SnmpPeriod)
-		log.Println("pprof:", config.Pprof)
-
-		log.Println("listening on:", lisP3.Addr())
-		log.Println("target P3:", config.TargetP3)
 		log.Println("encryption:", config.Crypt)
 		log.Println("nodelay parameters:", config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
 		log.Println("sndwnd:", config.SndWnd, "rcvwnd:", config.RcvWnd)
@@ -460,51 +361,6 @@ func main() {
 			go http.ListenAndServe(":6060", nil)
 		}
 
-		if err := lisP1.SetDSCP(config.DSCP); err != nil {
-			log.Println("SetDSCP:", err)
-		}
-		if err := lisP1.SetReadBuffer(config.SockBuf); err != nil {
-			log.Println("SetReadBuffer:", err)
-		}
-		if err := lisP1.SetWriteBuffer(config.SockBuf); err != nil {
-			log.Println("SetWriteBuffer:", err)
-		}
-
-		go snmpLogger(config.SnmpLog, config.SnmpPeriod)
-		if config.Pprof {
-			go http.ListenAndServe(":6061", nil)
-		}
-
-		if err := lisP2.SetDSCP(config.DSCP); err != nil {
-			log.Println("SetDSCP:", err)
-		}
-		if err := lisP2.SetReadBuffer(config.SockBuf); err != nil {
-			log.Println("SetReadBuffer:", err)
-		}
-		if err := lisP2.SetWriteBuffer(config.SockBuf); err != nil {
-			log.Println("SetWriteBuffer:", err)
-		}
-
-		go snmpLogger(config.SnmpLog, config.SnmpPeriod)
-		if config.Pprof {
-			go http.ListenAndServe(":6062", nil)
-		}
-
-		if err := lisP3.SetDSCP(config.DSCP); err != nil {
-			log.Println("SetDSCP:", err)
-		}
-		if err := lisP3.SetReadBuffer(config.SockBuf); err != nil {
-			log.Println("SetReadBuffer:", err)
-		}
-		if err := lisP3.SetWriteBuffer(config.SockBuf); err != nil {
-			log.Println("SetWriteBuffer:", err)
-		}
-
-		go snmpLogger(config.SnmpLog, config.SnmpPeriod)
-		if config.Pprof {
-			go http.ListenAndServe(":6063", nil)
-		}
-
 		for {
 
 			if conn, err := lis.AcceptKCP(); err == nil {
@@ -517,68 +373,13 @@ func main() {
 				conn.SetACKNoDelay(config.AckNodelay)
 
 				if config.NoComp {
-					go handleMux(conn, &config, config.Target)
+					go handleMux(conn, &config)
 				} else {
-					go handleMux(newCompStream(conn), &config, config.Target)
+					go handleMux(newCompStream(conn), &config)
 				}
 			} else {
 				log.Printf("%+v", err)
 			}
-
-			if conn, err := lisP1.AcceptKCP(); err == nil {
-				log.Println("remote address to P1:", conn.RemoteAddr())
-				conn.SetStreamMode(true)
-				conn.SetWriteDelay(true)
-				conn.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-				conn.SetMtu(config.MTU)
-				conn.SetWindowSize(config.SndWnd, config.RcvWnd)
-				conn.SetACKNoDelay(config.AckNodelay)
-
-				if config.NoComp {
-					go handleMux(conn, &config, config.TargetP1)
-				} else {
-					go handleMux(newCompStream(conn), &config, config.TargetP1)
-				}
-			} else {
-				log.Printf("%+v", err)
-			}
-
-			if conn, err := lisP2.AcceptKCP(); err == nil {
-				log.Println("remote address to P2:", conn.RemoteAddr())
-				conn.SetStreamMode(true)
-				conn.SetWriteDelay(true)
-				conn.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-				conn.SetMtu(config.MTU)
-				conn.SetWindowSize(config.SndWnd, config.RcvWnd)
-				conn.SetACKNoDelay(config.AckNodelay)
-
-				if config.NoComp {
-					go handleMux(conn, &config, config.TargetP2)
-				} else {
-					go handleMux(newCompStream(conn), &config, config.TargetP2)
-				}
-			} else {
-				log.Printf("%+v", err)
-			}
-
-			if conn, err := lisP3.AcceptKCP(); err == nil {
-				log.Println("remote address to P3:", conn.RemoteAddr())
-				conn.SetStreamMode(true)
-				conn.SetWriteDelay(true)
-				conn.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
-				conn.SetMtu(config.MTU)
-				conn.SetWindowSize(config.SndWnd, config.RcvWnd)
-				conn.SetACKNoDelay(config.AckNodelay)
-
-				if config.NoComp {
-					go handleMux(conn, &config, config.TargetP3)
-				} else {
-					go handleMux(newCompStream(conn), &config, config.TargetP3)
-				}
-			} else {
-				log.Printf("%+v", err)
-			}
-
 		}
 	}
 	myApp.Run(os.Args)

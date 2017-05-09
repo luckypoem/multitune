@@ -16,8 +16,8 @@ import (
 	"github.com/golang/snappy"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	kcp "gitlab.algotech.ch/jwt/kcp-go"
 	"gitlab.algotech.ch/jwt/SZ_smux"
+	kcp "gitlab.algotech.ch/jwt/kcp-go"
 )
 
 var (
@@ -103,8 +103,28 @@ func main() {
 			Usage: "local listen address",
 		},
 		cli.StringFlag{
+			Name:  "localaddr2,l2",
+			Value: ":12949",
+			Usage: "local listen address",
+		},
+		cli.StringFlag{
+			Name:  "localaddr3,l3",
+			Value: ":12950",
+			Usage: "local listen address",
+		},
+		cli.StringFlag{
 			Name:  "remoteaddr, r",
 			Value: "vps:29900",
+			Usage: "kcp server address",
+		},
+		cli.StringFlag{
+			Name:  "remoteaddr2, r2",
+			Value: "vps:29901",
+			Usage: "kcp server address",
+		},
+		cli.StringFlag{
+			Name:  "remoteaddr3, r3",
+			Value: "vps:29902",
 			Usage: "kcp server address",
 		},
 		cli.StringFlag{
@@ -232,6 +252,10 @@ func main() {
 		config := Config{}
 		config.LocalAddr = c.String("localaddr")
 		config.RemoteAddr = c.String("remoteaddr")
+		config.LocalAddr2 = c.String("localaddr2")
+		config.RemoteAddr2 = c.String("remoteaddr2")
+		config.LocalAddr3 = c.String("localaddr3")
+		config.RemoteAddr3 = c.String("remoteaddr3")
 		config.Key = c.String("key")
 		config.Crypt = c.String("crypt")
 		config.Mode = c.String("mode")
@@ -286,6 +310,16 @@ func main() {
 		listener, err := net.ListenTCP("tcp", addr)
 		checkError(err)
 
+		addr2, err := net.ResolveTCPAddr("tcp", config.LocalAddr2)
+		checkError(err)
+		listener2, err := net.ListenTCP("tcp", addr2)
+		checkError(err)
+
+		addr3, err := net.ResolveTCPAddr("tcp", config.LocalAddr3)
+		checkError(err)
+		listener3, err := net.ListenTCP("tcp", addr3)
+		checkError(err)
+
 		pass := pbkdf2.Key([]byte(config.Key), []byte(SALT), 4096, 32, sha1.New)
 		var block kcp.BlockCrypt
 		switch config.Crypt {
@@ -317,9 +351,15 @@ func main() {
 		}
 
 		log.Println("listening on:", listener.Addr())
+		log.Println("listening2 on:", listener2.Addr())
+		log.Println("listening3 on:", listener3.Addr())
+
 		log.Println("encryption:", config.Crypt)
 		log.Println("nodelay parameters:", config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
 		log.Println("remote address:", config.RemoteAddr)
+		log.Println("remote2 address:", config.RemoteAddr2)
+		log.Println("remote3 address:", config.RemoteAddr3)
+
 		log.Println("sndwnd:", config.SndWnd, "rcvwnd:", config.RcvWnd)
 		log.Println("compression:", !config.NoComp)
 		log.Println("mtu:", config.MTU)
@@ -338,11 +378,23 @@ func main() {
 		smuxConfig.MaxReceiveBuffer = config.SockBuf
 		smuxConfig.KeepAliveInterval = time.Duration(config.KeepAlive) * time.Second
 
-		createConn := func() (*smux.Session, error) {
-			kcpconn, err := kcp.DialWithOptions(config.RemoteAddr, block, config.DataShard, config.ParityShard)
+		createConn := func(remoteaddr string) (*smux.Session, error) {
+			kcpconn, err := kcp.DialWithOptions(remoteaddr, block, config.DataShard, config.ParityShard)
 			if err != nil {
-				return nil, errors.Wrap(err, "createConn()")
+				return nil, errors.Wrap(err, "createConn(1)")
 			}
+
+			/*
+				kcpconn2, err := kcp.DialWithOptions(config.RemoteAddr2, block, config.DataShard, config.ParityShard)
+				if err != nil {
+					return nil, errors.Wrap(err, "createConn(2)")
+				}
+				kcpconn3, err := kcp.DialWithOptions(config.RemoteAddr3, block, config.DataShard, config.ParityShard)
+				if err != nil {
+					return nil, errors.Wrap(err, "createConn(3)")
+				}
+			*/
+
 			kcpconn.SetStreamMode(true)
 			kcpconn.SetWriteDelay(true)
 			kcpconn.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
@@ -359,6 +411,43 @@ func main() {
 			if err := kcpconn.SetWriteBuffer(config.SockBuf); err != nil {
 				log.Println("SetWriteBuffer:", err)
 			}
+
+			/*
+				kcpconn2.SetStreamMode(true)
+				kcpconn2.SetWriteDelay(true)
+				kcpconn2.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
+				kcpconn2.SetWindowSize(config.SndWnd, config.RcvWnd)
+				kcpconn2.SetMtu(config.MTU)
+				kcpconn2.SetACKNoDelay(config.AckNodelay)
+
+				if err := kcpconn2.SetDSCP(config.DSCP); err != nil {
+					log.Println("SetDSCP 2:", err)
+				}
+				if err := kcpconn2.SetReadBuffer(config.SockBuf); err != nil {
+					log.Println("SetReadBuffer 2:", err)
+				}
+				if err := kcpconn2.SetWriteBuffer(config.SockBuf); err != nil {
+					log.Println("SetWriteBuffer 2:", err)
+				}
+
+				kcpconn3.SetStreamMode(true)
+				kcpconn3.SetWriteDelay(true)
+				kcpconn3.SetNoDelay(config.NoDelay, config.Interval, config.Resend, config.NoCongestion)
+				kcpconn3.SetWindowSize(config.SndWnd, config.RcvWnd)
+				kcpconn3.SetMtu(config.MTU)
+				kcpconn3.SetACKNoDelay(config.AckNodelay)
+
+				if err := kcpconn3.SetDSCP(config.DSCP); err != nil {
+					log.Println("SetDSCP 3:", err)
+				}
+				if err := kcpconn3.SetReadBuffer(config.SockBuf); err != nil {
+					log.Println("SetReadBuffer 3:", err)
+				}
+				if err := kcpconn3.SetWriteBuffer(config.SockBuf); err != nil {
+					log.Println("SetWriteBuffer 3:", err)
+				}
+
+			*/
 
 			// stream multiplex
 			var session *smux.Session
@@ -377,7 +466,7 @@ func main() {
 		// wait until a connection is ready
 		waitConn := func() *smux.Session {
 			for {
-				if session, err := createConn(); err == nil {
+				if session, err := createConn(config.RemoteAddr); err == nil {
 					return session
 				} else {
 					log.Println("re-connecting:", err)
